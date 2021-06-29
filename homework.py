@@ -49,7 +49,7 @@ def send_message(message):
     return bot.send_message(CHAT_ID, message)
 
 
-timestamp = {'current': 0}
+timestamp = {'current': int(time.time())}
 
 
 def main():
