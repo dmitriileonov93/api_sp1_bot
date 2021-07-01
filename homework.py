@@ -13,6 +13,10 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 bot = Bot(token=TELEGRAM_TOKEN)
+url = 'https://praktikum.yandex.ru/api/user_api/homework_statuses/'
+# timestamp = {'current': int(time.time())}
+timestamp = {'current': 0}
+sleep_time = 2
 
 logging.basicConfig(
     filename='main.log', filemode='w',
@@ -21,27 +25,35 @@ logging.basicConfig(
 
 
 def parse_homework_status(homework):
-    homework_name = homework['homework_name']
-    status = homework['status']
-    if status == 'reviewing':
-        return f'Ваша работа "{homework_name}" взята в ревью!'
-    else:
-        if status == 'rejected':
-            verdict = 'К сожалению, в работе нашлись ошибки.'
-        else:
-            verdict = 'Ревьюеру всё понравилось, работа зачтена!'
-        return f'У вас проверили работу "{homework_name}"!\n\n{verdict}'
+    homework_name = homework.get('homework_name')
+    if homework_name is None:
+        logging.info('"homework_name" нет данных!')
+    status = homework.get('status')
+    if status is None:
+        logging.info('"status" нет данных!')
+    homework_statuses = {
+        'reviewing': f'Ваша работа "{homework_name}" взята в ревью!',
+        'rejected': f'У вас проверили работу "{homework_name}"!\n\n'
+                    'К сожалению, в работе нашлись ошибки.',
+        'approved': f'У вас проверили работу "{homework_name}"!\n\n'
+                    'Ревьюеру всё понравилось, работа зачтена!'}
+    return homework_statuses.get(status)
 
 
 def get_homeworks(current_timestamp):
-    url = 'https://praktikum.yandex.ru/api/user_api/homework_statuses/'
     headers = {'Authorization': f'OAuth {PRAKTIKUM_TOKEN}'}
+    if current_timestamp is None:
+        current_timestamp = int(time.time()) - sleep_time
     payload = {'from_date': current_timestamp}
-    return requests.get(
-        url,
-        headers=headers,
-        params=payload
-    ).json()
+    try:
+        return requests.get(
+            url,
+            headers=headers,
+            params=payload
+        ).json()
+    except Exception as e:
+        logging.error(e)
+        return e
 
 
 def send_message(message):
@@ -49,22 +61,22 @@ def send_message(message):
     return bot.send_message(CHAT_ID, message)
 
 
-timestamp = {'current': int(time.time())}
-
-
 def main():
     logging.debug('Бот запущен!')
     while True:
         try:
+            logging.debug('отправлен запрос')
             homework_statuses = get_homeworks(timestamp['current'])
-            timestamp['current'] = homework_statuses['current_date']
-            if homework_statuses['homeworks']:
+            timestamp['current'] = homework_statuses.get('current_date')
+            if timestamp['current'] is None:
+                logging.info('"current_date" нет данных!')
+            if homework_statuses.get('homeworks'):
                 homework = homework_statuses['homeworks'][0]
                 message = parse_homework_status(homework)
                 send_message(message)
             else:
-                pass
-            time.sleep(20 * 60)
+                logging.debug('В "homeworks" нет данных')
+            time.sleep(sleep_time)
 
         except Exception as e:
             error_message = f'Бот упал с ошибкой: {e}'
