@@ -14,9 +14,8 @@ CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 bot = Bot(token=TELEGRAM_TOKEN)
 url = 'https://praktikum.yandex.ru/api/user_api/homework_statuses/'
-# timestamp = {'current': int(time.time())}
-timestamp = {'current': 0}
-sleep_time = 2
+timestamp = {'current': int(time.time())}
+sleep_time = 20 * 60
 
 logging.basicConfig(
     filename='main.log', filemode='w',
